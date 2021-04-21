@@ -8,7 +8,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     """docstring for CustomUserSerializer."""
     class Meta:
         model = CustomUser
-        fields = ['email', 'username', 'password', 'first_name', 'last_name', 'about', 'avatar',
+        fields = ['id', 'email', 'username', 'password', 'first_name', 'last_name', 'about', 'avatar',
             'date_of_birth', 'date_joined', 'date_updated'
         ]
         extra_kwargs = {
@@ -27,7 +27,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
                 pass
         except KeyError:
             pass
- 
+
         password = validated_data.pop('password', None)
         instance = self.Meta.model(**validated_data)
         if password is not None:
