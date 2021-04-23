@@ -1,26 +1,30 @@
+import base64
+import json
+import jwt, datetime
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
-import jwt, datetime
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser
 from rest_framework.exceptions import AuthenticationFailed
-# from rest_framework.views import APIView
 from .models import CustomUser
 from .serializers import CustomUserSerializer
 
-# from api.models import CustomUser
-# from api.serializers import CustomUserSerializer
-# from rest_framework.renderers import JSONRenderer
-# from rest_framework.parsers import JSONParser
-# user = CustomUser(email='s@gmail.com', username='sf', password='Abcd_1234', first_name='Saadman', last_name='Farhad')
 # Create your views here.
 @api_view(['POST'])
 def register(request):
+    if len(request.data['username']) == 0:
+        print('In key error username')
+        return JsonResponse({'username': 'Username cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(request.data['password']) == 0:
+        print('In key error password')
+        return JsonResponse({'password': 'Password cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
+
     serializer = CustomUserSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
@@ -53,6 +57,52 @@ def login(request):
         'status': True,
         'accessToken': token
     }, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def login_social(request):
+    if request.data['provider'] == 'google':
+        email = request.data['email']
+
+        user = CustomUser.objects.filter(email=email).first()
+
+        if user is None:
+            accessToken = request.data['accessToken']
+            parts = accessToken.split(".")
+            if len(parts) != 3:
+                raise Exception("Incorrect id token format")
+
+            payload = parts[1]
+            padded = payload + '=' * (4 - len(payload) % 4)
+            decoded = base64.b64decode(padded)
+            decoded_json = json.loads(decoded)
+
+            if decoded_json['email'] != email:
+                raise AuthenticationFailed('Unauthorized')
+
+            new_user = {
+                'email': email,
+                'first_name': request.data['first_name'],
+                'last_name': request.data['last_name'],
+                'avatar': request.data['avatar']
+            }
+            serializer = CustomUserSerializer(data=new_user)
+            if serializer.is_valid():
+                user = serializer.save()
+
+        payload = {
+            'id': user.id,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=10),
+            'iat': datetime.datetime.utcnow()
+        }
+
+        token = jwt.encode(payload, 'secret', algorithm='HS256')
+
+        return JsonResponse({
+            'status': True,
+            'accessToken': token
+        }, status=status.HTTP_200_OK)
+
+    raise AuthenticationFailed('Unauthorized')
 
 @api_view(['GET'])
 def get_user(request):
