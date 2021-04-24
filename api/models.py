@@ -24,3 +24,23 @@ class CustomUser(AbstractBaseUser):
 
     def __str__(self):
         return self.email
+
+class Watchlist(models.Model):
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'media_id'], name='unique watchlist media')
+        ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    media_id = models.IntegerField(blank=False, null=False)
+    media_type = models.CharField(max_length=30, blank=False, null=False)
+    watched = models.BooleanField(default=False, blank=False, null=False)
+
+class Review(models.Model):
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'watchlist'], name='unique review media')
+        ]
+    user = models.ForeignKey(CustomUser, blank=False, null=False, on_delete=models.CASCADE)
+    watchlist = models.ForeignKey(Watchlist, blank=False, null=False, on_delete=models.CASCADE)
+    review = models.TextField(blank=False, null=False)

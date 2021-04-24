@@ -2,33 +2,30 @@ import base64
 import json
 import jwt, datetime
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.views import APIView
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser
 from rest_framework.exceptions import AuthenticationFailed
-from .models import CustomUser
-from .serializers import CustomUserSerializer
+from .models import CustomUser, Watchlist, Review
+from .serializers import CustomUserSerializer, WatchlistSerializer, ReviewSerializer
 
 # Create your views here.
 @api_view(['POST'])
 def register(request):
     if len(request.data['username']) == 0:
-        print('In key error username')
         return JsonResponse({'username': 'Username cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
 
     if len(request.data['password']) == 0:
-        print('In key error password')
         return JsonResponse({'password': 'Password cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
 
     serializer = CustomUserSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
-        return JsonResponse(serializer.data, status=status.HTTP_201_CREATED)
+        return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)
     return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
@@ -91,7 +88,7 @@ def login_social(request):
 
         payload = {
             'id': user.id,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=10),
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30),
             'iat': datetime.datetime.utcnow()
         }
 
@@ -105,7 +102,7 @@ def login_social(request):
     raise AuthenticationFailed('Unauthorized')
 
 @api_view(['GET'])
-def get_user(request):
+def user(request):
     try:
         token = request.META['HTTP_AUTHORIZATION']
     except KeyError:
@@ -113,7 +110,6 @@ def get_user(request):
 
     try:
         accessToken = token.split()[1]
-        print(accessToken)
         payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
     except jwt.ExpiredSignatureError:
         raise AuthenticationFailed('User not authenticated')
@@ -125,3 +121,90 @@ def get_user(request):
     serializer = CustomUserSerializer(user)
 
     return Response(serializer.data)
+
+@api_view(['GET'])
+def media_status(request, user_id, media_id):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    watched = Watchlist.objects.filter(Q(user_id=user_id) & Q(media_id=media_id)).first()
+    serializer = WatchlistSerializer(watched)
+
+    return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def get_watchlist(request, user_id):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    watchlist = Watchlist.objects.filter(user_id=user_id)
+    serializer = WatchlistSerializer(watchlist, many=True)
+
+    return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def post_watchlist(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    serializer = WatchlistSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)
+    return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def put_watchlist(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    user_id = request.data['user']
+    media_id = request.data['media_id']
+
+    watched = Watchlist.objects.filter(Q(user_id=user_id) & Q(media_id=media_id)).first()
+    # watched.watched = True
+    serializer = WatchlistSerializer(watched, data={'watched': True}, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)
+    return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
