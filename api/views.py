@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import AuthenticationFailed
 from .models import CustomUser, Watchlist, Review
 from .serializers import CustomUserSerializer, WatchlistSerializer, ReviewSerializer
@@ -144,6 +145,8 @@ def media_status(request, user_id, media_id):
 
 @api_view(['GET'])
 def get_watchlist(request, user_id):
+    paginator = PageNumberPagination()
+
     try:
         token = request.META['HTTP_AUTHORIZATION']
     except KeyError:
@@ -157,10 +160,36 @@ def get_watchlist(request, user_id):
     except jwt.InvalidSignatureError:
         raise AuthenticationFailed('User not authenticated')
 
-    watchlist = Watchlist.objects.filter(user_id=user_id)
-    serializer = WatchlistSerializer(watchlist, many=True)
+    watchlist = Watchlist.objects.filter(Q(user_id=user_id) & Q(watched=False))
+    result_page = paginator.paginate_queryset(watchlist, request)
+    serializer = WatchlistSerializer(result_page, many=True)
 
-    return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+    return paginator.get_paginated_response(serializer.data)
+    # return JsonResponse({'status': True, 'data': paginator.get_paginated_response(serializer.data)}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def get_watchedlist(request, user_id):
+    paginator = PageNumberPagination()
+
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    watchedlist = Watchlist.objects.filter(Q(user_id=user_id) & Q(watched=True))
+    result_page = paginator.paginate_queryset(watchedlist, request)
+    serializer = WatchlistSerializer(result_page, many=True)
+
+    return paginator.get_paginated_response(serializer.data)
+    # return JsonResponse({'status': True, 'data': json.loads(results)}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def post_watchlist(request):
