@@ -1,6 +1,7 @@
 import base64
 import json
 import jwt, datetime
+import requests
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
@@ -61,11 +62,10 @@ def login(request):
 def login_social(request):
     if request.data['provider'] == 'google':
         email = request.data['email']
-
         user = CustomUser.objects.filter(email=email).first()
 
         if user is None:
-            accessToken = request.data['accessToken']
+            accessToken = request.data['access_token']
             parts = accessToken.split(".")
             if len(parts) != 3:
                 raise Exception("Incorrect id token format")
@@ -101,6 +101,42 @@ def login_social(request):
             'accessToken': token
         }, status=status.HTTP_200_OK)
 
+    if request.data['provider'] == 'facebook':
+        response = requests.get('https://graph.facebook.com/app/?access_token=' + request.data['access_token'])
+        facebook_app_details = response.json()
+
+        if facebook_app_details['id'] != settings.FACEBOOK_APP_ID:
+            raise AuthenticationFailed('Unauthorized')
+
+        email = request.data['email']
+
+        user = CustomUser.objects.filter(email=email).first()
+
+        if user is None:
+            new_user = {
+                'email': email,
+                'first_name': request.data['first_name'],
+                'last_name': request.data['last_name'],
+                'avatar': request.data['avatar']
+            }
+            serializer = CustomUserSerializer(data=new_user)
+            if serializer.is_valid():
+                user = serializer.save()
+
+        payload = {
+            'id': user.id,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30),
+            'iat': datetime.datetime.utcnow()
+        }
+
+        token = jwt.encode(payload, settings.JWT_SECRET, algorithm='HS256')
+
+        return JsonResponse({
+            'status': True,
+            'accessToken': token
+        }, status=status.HTTP_200_OK)
+
+
     raise AuthenticationFailed('Unauthorized')
 
 @api_view(['GET'])
@@ -117,7 +153,6 @@ def user(request):
         raise AuthenticationFailed('User not authenticated')
     except jwt.InvalidSignatureError:
         raise AuthenticationFailed('User not authenticated')
-
 
     user = CustomUser.objects.filter(id=payload['id']).first()
     serializer = CustomUserSerializer(user)

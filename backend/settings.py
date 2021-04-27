@@ -27,6 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY')
 JWT_SECRET = env('JWT_SECRET')
+FACEBOOK_APP_ID = env('FACEBOOK_APP_ID')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
