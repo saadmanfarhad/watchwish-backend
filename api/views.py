@@ -13,6 +13,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import AuthenticationFailed
 from .models import CustomUser, Watchlist, Review
 from .serializers import CustomUserSerializer, WatchlistSerializer, ReviewSerializer
+from django.conf import settings
 
 # Create your views here.
 @api_view(['POST'])
@@ -49,7 +50,7 @@ def login(request):
         'iat': datetime.datetime.utcnow()
     }
 
-    token = jwt.encode(payload, 'secret', algorithm='HS256')
+    token = jwt.encode(payload, settings.JWT_SECRET, algorithm='HS256')
 
     return JsonResponse({
         'status': True,
@@ -93,7 +94,7 @@ def login_social(request):
             'iat': datetime.datetime.utcnow()
         }
 
-        token = jwt.encode(payload, 'secret', algorithm='HS256')
+        token = jwt.encode(payload, settings.JWT_SECRET, algorithm='HS256')
 
         return JsonResponse({
             'status': True,
@@ -111,7 +112,7 @@ def user(request):
 
     try:
         accessToken = token.split()[1]
-        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
     except jwt.ExpiredSignatureError:
         raise AuthenticationFailed('User not authenticated')
     except jwt.InvalidSignatureError:
@@ -132,7 +133,7 @@ def media_status(request, user_id, media_id):
 
     try:
         accessToken = token.split()[1]
-        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
     except jwt.ExpiredSignatureError:
         raise AuthenticationFailed('User not authenticated')
     except jwt.InvalidSignatureError:
@@ -146,6 +147,7 @@ def media_status(request, user_id, media_id):
 @api_view(['GET'])
 def get_watchlist(request, user_id):
     paginator = PageNumberPagination()
+    paginator.page_size = 2
 
     try:
         token = request.META['HTTP_AUTHORIZATION']
@@ -154,7 +156,7 @@ def get_watchlist(request, user_id):
 
     try:
         accessToken = token.split()[1]
-        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
     except jwt.ExpiredSignatureError:
         raise AuthenticationFailed('User not authenticated')
     except jwt.InvalidSignatureError:
@@ -178,7 +180,7 @@ def get_watchedlist(request, user_id):
 
     try:
         accessToken = token.split()[1]
-        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
     except jwt.ExpiredSignatureError:
         raise AuthenticationFailed('User not authenticated')
     except jwt.InvalidSignatureError:
@@ -200,7 +202,7 @@ def post_watchlist(request):
 
     try:
         accessToken = token.split()[1]
-        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
     except jwt.ExpiredSignatureError:
         raise AuthenticationFailed('User not authenticated')
     except jwt.InvalidSignatureError:
@@ -221,7 +223,7 @@ def put_watchlist(request):
 
     try:
         accessToken = token.split()[1]
-        payload = jwt.decode(accessToken, 'secret', algorithms=['HS256'])
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
     except jwt.ExpiredSignatureError:
         raise AuthenticationFailed('User not authenticated')
     except jwt.InvalidSignatureError:
