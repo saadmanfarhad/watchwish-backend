@@ -17,6 +17,10 @@ from .serializers import CustomUserSerializer, WatchlistSerializer, ReviewSerial
 from django.conf import settings
 
 # Create your views here.
+@api_view(['GET'])
+def welcome(request):
+    return JsonResponse({'message': 'Welcome to WatchWish API'})
+
 @api_view(['POST'])
 def register(request):
     if len(request.data['username']) == 0:
