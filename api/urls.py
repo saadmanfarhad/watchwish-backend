@@ -7,6 +7,7 @@ urlpatterns = [
     path('login', views.login),
     path('login/social', views.login_social),
     path('user', views.user),
+    path('user/about', views.post_user_about),
     path('media/status/<int:user_id>/<int:media_id>', views.media_status),
     path('watchlist/<int:user_id>', views.get_watchlist),
     path('watchedlist/<int:user_id>', views.get_watchedlist),
