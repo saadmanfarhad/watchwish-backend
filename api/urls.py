@@ -11,7 +11,10 @@ urlpatterns = [
     path('watchlist/<int:user_id>', views.get_watchlist),
     path('watchedlist/<int:user_id>', views.get_watchedlist),
     path('watchlist', views.post_watchlist),
-    path('watchlist/put', views.put_watchlist)
+    path('watchlist/put', views.put_watchlist),
+    path('review/<int:user_id>/<int:media_id>', views.get_review),
+    path('review', views.post_review),
+    path('review/put', views.put_review)
     # views.AQuery.as_view({'get':'do_get'})
     # path('snippets/<int:pk>/', views.snippet_detail),
 ]

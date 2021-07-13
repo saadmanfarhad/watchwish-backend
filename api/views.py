@@ -278,3 +278,74 @@ def put_watchlist(request):
         serializer.save()
         return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)
     return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def get_review(request, user_id, media_id):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    review = Review.objects.filter(Q(user_id=user_id) & Q(media_id=media_id)).first()
+    serializer = ReviewSerializer(review)
+
+    return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def post_review(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    print(request.data)
+
+    serializer = ReviewSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)
+    return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def put_review(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    user_id = request.data['user']
+    media_id = request.data['media_id']
+    edited_review = request.data['review']
+
+    review = Review.objects.filter(Q(user_id=user_id) & Q(media_id=media_id)).first()
+    print(review)
+    # watched.watched = True
+    serializer = ReviewSerializer(review, data={'review': edited_review}, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)
+    return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

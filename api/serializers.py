@@ -43,7 +43,7 @@ class WatchlistSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
-        fields = ['id', 'user', 'watchlist', 'review']
+        fields = ['id', 'user', 'media_id', 'review']
 
 class CustomValidation(APIException):
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
