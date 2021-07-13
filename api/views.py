@@ -340,11 +340,12 @@ def put_review(request):
     user_id = request.data['user']
     media_id = request.data['media_id']
     edited_review = request.data['review']
+    rating = request.data['rating']
 
     review = Review.objects.filter(Q(user_id=user_id) & Q(media_id=media_id)).first()
     print(review)
     # watched.watched = True
-    serializer = ReviewSerializer(review, data={'review': edited_review}, partial=True)
+    serializer = ReviewSerializer(review, data={'review': edited_review, 'rating': rating}, partial=True)
     if serializer.is_valid():
         serializer.save()
         return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)

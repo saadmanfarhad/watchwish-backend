@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
 from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
+from django.core.validators import MaxValueValidator, MinValueValidator 
 
 # Create your models here.
 class CustomUser(AbstractBaseUser):
@@ -43,4 +44,5 @@ class Review(models.Model):
         ]
     user = models.ForeignKey(CustomUser, blank=False, null=False, on_delete=models.CASCADE)
     media_id = models.IntegerField(blank=False, null=False)
+    rating = models.PositiveIntegerField(default=0, validators=[MinValueValidator(1), MaxValueValidator(5)])
     review = models.TextField(blank=False, null=False)
