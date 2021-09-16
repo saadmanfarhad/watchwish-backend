@@ -19,6 +19,7 @@ class CustomUser(AbstractBaseUser):
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(default=timezone.now)
     date_updated = models.DateTimeField(default=timezone.now)
+    friends = models.ManyToManyField("CustomUser", blank=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -46,3 +47,8 @@ class Review(models.Model):
     media_id = models.IntegerField(blank=False, null=False)
     rating = models.PositiveIntegerField(default=0, validators=[MinValueValidator(1), MaxValueValidator(5)])
     review = models.TextField(blank=False, null=False)
+
+class FriendRequest(models.Model):
+    sender = models.ForeignKey(CustomUser, related_name="sender", on_delete=models.CASCADE)
+    receiver = models.ForeignKey(CustomUser, related_name="receiver", on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True, blank=False, null=False)

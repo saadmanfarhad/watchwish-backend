@@ -12,9 +12,17 @@ from rest_framework.response import Response
 from rest_framework.parsers import JSONParser
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import AuthenticationFailed
-from .models import CustomUser, Watchlist, Review
-from .serializers import CustomUserSerializer, WatchlistSerializer, ReviewSerializer
+from .models import CustomUser, Watchlist, Review, FriendRequest
+from .serializers import CustomUserSerializer, WatchlistSerializer, ReviewSerializer, FriendRequestSerializer
 from django.conf import settings
+from enum import Enum, IntEnum
+
+#Enum
+class FriendshipStatus(IntEnum):
+    FRIENDS = 1
+    NOT_FRIENDS = 2
+    REQUEST_SENT = 3
+    REQUEST_RECEIVED = 4
 
 # Create your views here.
 @api_view(['GET'])
@@ -51,7 +59,7 @@ def login(request):
 
     payload = {
         'id': user.id,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=10),
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=60),
         'iat': datetime.datetime.utcnow()
     }
 
@@ -159,6 +167,26 @@ def user(request):
         raise AuthenticationFailed('User not authenticated')
 
     user = CustomUser.objects.filter(id=payload['id']).first()
+    serializer = CustomUserSerializer(user)
+
+    return Response(serializer.data)
+
+@api_view(['GET'])
+def get_user(request, user_id):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    user = CustomUser.objects.filter(id=user_id).first()
     serializer = CustomUserSerializer(user)
 
     return Response(serializer.data)
@@ -374,3 +402,90 @@ def post_user_about(request):
         serializer.save()
         return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)
     return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def get_friend_status(request, user_id, friend_id):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    
+    user = CustomUser.objects.filter(id=user_id).first()
+    serializer = CustomUserSerializer(user)
+    user_friend_list = serializer.data['friends']
+    
+    if friend_id in user_friend_list:
+        return JsonResponse({'status': True, 'type': FriendshipStatus.FRIENDS}, status=status.HTTP_200_OK)
+    else:
+        try:
+            if FriendRequest.objects.filter(Q(sender = user_id) & Q(receiver = friend_id)).first() is not None:
+                return JsonResponse({'status': True, 'type': FriendshipStatus.REQUEST_SENT}, status=status.HTTP_200_OK)
+            elif FriendRequest.objects.filter(Q(sender = friend_id) & Q(receiver = user_id)).first() is not None:
+                return JsonResponse({'status': True, 'type': FriendshipStatus.REQUEST_RECEIVED}, status=status.HTTP_200_OK)
+            else:
+                return JsonResponse({'status': True, 'type': FriendshipStatus.NOT_FRIENDS}, status=status.HTTP_200_OK)
+        except FriendRequest.DoesNotExist:
+            return JsonResponse({'status': True, 'type': FriendshipStatus.NOT_FRIENDS}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def send_friend_request(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    serializer = FriendRequestSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return JsonResponse({'status': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)
+    return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def accept_friend_request(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+    except KeyError:
+        raise AuthenticationFailed('User not authenticated')
+
+    try:
+        accessToken = token.split()[1]
+        payload = jwt.decode(accessToken, settings.JWT_SECRET, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+    except jwt.InvalidSignatureError:
+        raise AuthenticationFailed('User not authenticated')
+
+    user_id = request.data['user_id']
+    friend_id = request.data['friend_id']
+
+    friend_request = FriendRequest.objects.filter(Q(sender=friend_id) & Q(receiver=user_id)).first()
+
+    serializer = FriendRequestSerializer(friend_request, data={'is_active': False}, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+
+    user = CustomUser.objects.get(id=user_id)
+    friend = CustomUser.objects.get(id=friend_id)
+
+    user.friends.add(friend)
+    friend.friends.add(user)
+
+    return JsonResponse({'status': True}, status=status.HTTP_200_OK)
+
+

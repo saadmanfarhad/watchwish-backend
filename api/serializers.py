@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser, Watchlist, Review
+from .models import CustomUser, Watchlist, Review, FriendRequest
 from rest_framework.exceptions import APIException
 from django.utils.encoding import force_text
 from rest_framework import status
@@ -9,7 +9,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id', 'email', 'username', 'password', 'first_name', 'last_name', 'about', 'avatar',
-            'date_of_birth', 'date_joined', 'date_updated'
+            'date_of_birth', 'date_joined', 'date_updated', 'friends'
         ]
         extra_kwargs = {
             'password': {'write_only': True}
@@ -44,6 +44,12 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ['id', 'user', 'media_id', 'review', 'rating']
+
+class FriendRequestSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = FriendRequest
+        fields = ['sender', 'receiver']
 
 class CustomValidation(APIException):
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
